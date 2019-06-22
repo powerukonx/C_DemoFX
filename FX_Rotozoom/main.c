@@ -374,6 +374,18 @@ Returns     :   None.
 static void vFxQuit (void)
 {
   /* -User specific- */
+  if (NULL != g_pau8Buffer)
+  {
+    free (g_pau8Buffer);
+  }
+  if (NULL != g_pau32Buffer)
+  {
+    free (g_pau32Buffer);
+  }
+  if (NULL != g_pau32Mini)
+  {
+    free (g_pau32Mini);
+  }
   /* -User specific- */
 }
 
@@ -553,8 +565,6 @@ static void vMakeAndDisplayMini (void)
 
   l_u32ScrollYValue++;
 }
-
-
 /* -User specific- */
 
 

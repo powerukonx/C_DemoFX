@@ -8,7 +8,7 @@
   File name:    main.c
   Date:         23 07 2017
   Author:       Power.
-  Description:  Oldschool demoeffect - FX xxxx.
+  Description:  Oldschool demoeffect - FX Plasma.
 ============================================================================= */
 
 /* =============================================================================
