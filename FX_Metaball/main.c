@@ -35,7 +35,7 @@
 ============================================================================= */
 /* FX specific. */
 #define SDL_SUBSYSTEM_TO_INIT   SDL_INIT_VIDEO
-#define FX_NAME                 "FX_Plasma by UKONX"
+#define FX_NAME                 "FX_Metaball by UKONX"
 #define SCREEN_WIDTH            ((uint16_t)800)
 #define SCREEN_HIGH             ((uint16_t)600)
 #define SCREEN_BPP              ((uint8_t)32)
@@ -245,7 +245,18 @@ static bool bLoop (void)
     {
       case SDL_KEYDOWN:
       {
-        l_bReturn = false;
+        switch(l_sEvent.key.keysym.sym)
+        {
+          case SDLK_ESCAPE:
+          {
+            l_bReturn = false;
+            break;
+          }
+          default:
+          {
+            break;
+          }
+        }
         break;
       }
       default:

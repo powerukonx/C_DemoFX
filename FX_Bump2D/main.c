@@ -247,8 +247,8 @@ static bool bLoop (void)
           {
             break;
           }
-          break;
         }
+        break;
       }
       default:
       {

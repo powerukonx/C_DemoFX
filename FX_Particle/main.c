@@ -37,8 +37,8 @@
 /* FX specific. */
 #define SDL_SUBSYSTEM_TO_INIT   SDL_INIT_VIDEO
 #define FX_NAME                 "FX_Plasma by UKONX"
-#define SCREEN_WIDTH            ((uint16_t)1024)
-#define SCREEN_HIGH             ((uint16_t)768)
+#define SCREEN_WIDTH            ((uint16_t)800)
+#define SCREEN_HIGH             ((uint16_t)600)
 #define SCREEN_BPP              ((uint8_t)32)
 #define YMAX                    SCREEN_HIGH//((uint16_t)(SCREEN_HIGH - (SCREEN_HIGH / 3)))
 #define ALPHA_MASK              ((uint32_t)0xFF000000)
@@ -47,7 +47,7 @@
 #define BLUE_MASK               ((uint32_t)0x000000FF)
 
 //#define TRUE_FULLSCREEN
-#define DESKTOP_FULLSCREEN
+//#define DESKTOP_FULLSCREEN
 #if defined(TRUE_FULLSCREEN)
   #define SDL_FLAG (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE)
 #elif defined(DESKTOP_FULLSCREEN)
@@ -254,7 +254,18 @@ static bool bLoop (void)
     {
       case SDL_KEYDOWN:
       {
-        l_bReturn = false;
+        switch(l_sEvent.key.keysym.sym)
+        {
+          case SDLK_ESCAPE:
+          {
+            l_bReturn = false;
+            break;
+          }
+          default:
+          {
+            break;
+          }
+        }
         break;
       }
       default:

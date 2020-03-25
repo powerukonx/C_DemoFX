@@ -30,7 +30,7 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add directory="C:/SDL2-2.0.8/i686-w64-mingw32/include" />
+			<Add directory="C:/SDL2-2.0.10/i686-w64-mingw32/include" />
 		</Compiler>
 		<Linker>
 			<Add option="-lmingw32" />
@@ -38,7 +38,7 @@
 			<Add option="-lSDL2" />
 			<Add option="-lSDL2_image" />
 			<Add library="Winmm" />
-			<Add directory="C:/SDL2-2.0.8/i686-w64-mingw32/lib" />
+			<Add directory="C:/SDL2-2.0.10/i686-w64-mingw32/lib" />
 		</Linker>
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
