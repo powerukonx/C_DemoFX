@@ -236,8 +236,19 @@ static bool bLoop (void)
     {
       case SDL_KEYDOWN:
       {
-        l_bReturn = false;
-        break;
+        switch(l_sEvent.key.keysym.sym)
+        {
+          case SDLK_ESCAPE:
+          {
+            l_bReturn = false;
+            break;
+          }
+          default:
+          {
+            break;
+          }
+          break;
+        }
       }
       default:
       {
