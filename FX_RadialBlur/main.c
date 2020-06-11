@@ -248,10 +248,10 @@ int main (int arc, char *argv[]) {
 
                         case SDL_KEYDOWN: {
 
-                          //if (l_sEvent.key.keysym.sym == SDLK_ESCAPE) {
+                          if (l_sEvent.key.keysym.sym == SDLK_ESCAPE) {
 
                             l_ui8Loop = 0;
-                         // }
+                          }
 
                           break;
                         }
