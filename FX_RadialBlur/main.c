@@ -1,25 +1,19 @@
-/* =============================================================================
-
-      88        88  88      a8P     ,ad8888ba,    888b      88  8b        d8
-      88        88  88    ,88'     d8"'    `"8b   8888b     88   Y8,    ,8P
-      88        88  88  ,88"      d8'        `8b  88 `8b    88    `8b  d8'
-      88        88  88,d88'       88          88  88  `8b   88      Y88P
-      88        88  8888"88,      88          88  88   `8b  88      d88b
-      88        88  88P   Y8b     Y8,        ,8P  88    `8b 88    ,8P  Y8,
-      Y8a.    .a8P  88     "88,    Y8a.    .a8P   88     `8888   d8'    `8b
-       `"Y8888Y"'   88       Y8b    `"Y8888Y"'    88      `888  8P        Y8
-
-  File name:     main.c
-  Date:          21 07 2017
-  Author:        Power(code)/Deemphasis(algo).
-  Description:   Radial blur.
+﻿/* =============================================================================
+                  ██╗   ██╗██╗  ██╗ ██████╗ ███╗   ██╗██╗  ██╗
+                  ██║   ██║██║ ██╔╝██╔═══██╗████╗  ██║╚██╗██╔╝
+                  ██║   ██║█████╔╝ ██║   ██║██╔██╗ ██║ ╚███╔╝
+                  ██║   ██║██╔═██╗ ██║   ██║██║╚██╗██║ ██╔██╗
+                  ╚██████╔╝██║  ██╗╚██████╔╝██║ ╚████║██╔╝ ██╗
+                   ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝
+  File name:    main.c
+  Date:         23 07 2017
+  Author:       Power.
+  Description:  Oldschool demoeffect - FX xxxx.
 ============================================================================= */
 
 /* =============================================================================
                                  DEBUG Section
 ============================================================================= */
-//#define TRUE_FULLSCREEN
-// #define DESKTOP_FULLSCREEN
 #define OCTANT0
 #define OCTANT1
 #define OCTANT2
@@ -28,17 +22,14 @@
 #define OCTANT5
 #define OCTANT6
 #define OCTANT7
-
 #define LINE01
-#define LINE12
 #define LINE23
 #define LINE34
 #define LINE45
+#define LINE12
 #define LINE56
 #define LINE67
 #define LINE70
-
-//#define CLEAR_BACKGROUND
 
 
 /* =============================================================================
@@ -46,47 +37,72 @@
 ============================================================================= */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
-#include <math.h>
 #include <SDL2/SDL_image.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+/* -User specific- */
+#include <math.h>
+/* -User specific- */
 
 /* =============================================================================
                           Private defines and typedefs
 ============================================================================= */
+/* FX specific. */
+#define SDL_SUBSYSTEM_TO_INIT   SDL_INIT_VIDEO
+#define FX_NAME                 "FX_RadialBlur by UKONX"
+#define SCREEN_WIDTH            ((uint16_t)800)
+#define SCREEN_HIGH             ((uint16_t)600)
+#define SCREEN_BPP              ((uint8_t)32)
+#define YMAX                    ((uint16_t)(SCREEN_HIGH - (SCREEN_HIGH / 3)))
+#define ALPHA_MASK              ((uint32_t)0xFF000000)
+#define RED_MASK                ((uint32_t)0x00FF0000)
+#define GREEN_MASK              ((uint32_t)0x0000FF00)
+#define BLUE_MASK               ((uint32_t)0x000000FF)
 
-#define WINDOW_WIDTH  512
-#define WINDOW_HEIGHT 384
+// #define TRUE_FULLSCREEN
+// #define DESKTOP_FULLSCREEN
 #if defined(TRUE_FULLSCREEN)
-  #define SDL_FLAG SDL_WINDOW_FULLSCREEN
+  #define SDL_FLAG (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE)
 #elif defined(DESKTOP_FULLSCREEN)
-  #define SDL_FLAG SDL_WINDOW_FULLSCREEN_DESKTOP
+  #define SDL_FLAG (SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_RESIZABLE)
 #else
-  #define SDL_FLAG 0
+  #define SDL_FLAG (SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE)
 #endif
-/* =============================================================================
-                          Private defines and typedefs
-============================================================================= */
-#define IMG_PATH      "texture/ukonx.png"
-//#define MASK_VIDEO    0x00FFFFFF
-#define MASK_VIDEO    0x00000000
-#define PIXEL_COLOR   0x00FFFFFF
-#define min(a,b)      (a>b)?b:a
-#define max(a,b)      (a>b)?a:b
-#define OFFSET_X      WINDOW_WIDTH/2
-#define OFFSET_Y      WINDOW_HEIGHT/2
+/* FX specific. */
+
+/* -User specific- */
+#define UINT8_MAX_VALUE         ((uint8_t)255)
+#define MAKE_RGB(r,g,b)         ( ( (r)<<16u) | ((g)<<8) | (b) )
+#define GET_RED(rgb)            ((uint8_t)(rgb>>16u))
+#define GET_GREEN(rgb)          ((uint8_t)(rgb>>8u))
+#define GET_BLUE(rgb)           ((uint8_t)(rgb))
+#define MASK_16BITS             (0xFFFF)
+#define BIT0                    (1<<0)
+#define BIT1                    (1<<1)
+#define BIT2                    (1<<2)
+#define RANDOM_LINE_SIZE        ((uint8_t)(SCREEN_HIGH/48))
+#define min(a)                  ((a) > 255 ? 255 : a)
+#define TABLE_SIZE              256
+#define TEXTURE_FILENAME        "./texture/ukonx.png"
+/* -User specific- */
+
 
 /* =============================================================================
                         Private constants and variables
 ============================================================================= */
+static SDL_Window   *g_pSDL_Window                              = NULL;
+static SDL_Renderer *g_pSDL_Renderer                            = NULL;
+static SDL_Surface  *g_pSDL_Image                               = NULL;
+static SDL_Surface  *g_pSDL_Screen                              = NULL;
+static SDL_Texture  *g_pSDL_Texture                             = NULL;
 
-
-/* =============================================================================
-                         Private functions declarations
-============================================================================= */
-void vRenderer (unsigned long*, short, short, float);
+/* -User specific- */
+static uint8_t  *g_pau8Buffer                                   = NULL;
+static uint32_t *g_pau32Buffer                                  = NULL;
+static uint32_t *g_pau32Mini                                    = NULL;
+static uint8_t *g_pau8Texture                                   = NULL;
+/* -User specific- */
 
 
 /* =============================================================================
@@ -95,962 +111,989 @@ void vRenderer (unsigned long*, short, short, float);
 
 
 /* =============================================================================
+                        Private function declarations
+============================================================================= */
+static bool bSetup    (void);
+static bool bLoop     (void);
+static void vQuit     (void);
+static bool bFxSetup  (void);
+static void vFxQuit   (void);
+static bool bFxLoop   (void);
+
+/* -User specific- */
+static void vMakeRadialBlur (void);
+static void vMakeAndDisplayMini (void);
+/* -User specific- */
+
+/* =============================================================================
                                Public functions
 ============================================================================= */
 
-/* =============================================================================
-Function    :   main
 
-Description :   Main function.
-
-Parameters  :   None.
-
-Return      :   None.
-============================================================================= */
-int main (int arc, char *argv[]) {
-
-  /* Locals variables declaration and initialization */
-  unsigned char l_ui8Loop = 1;
-  short l_i16PosX;
-  short l_i16PosY;
-  unsigned long l_ui32Pixel;
-  float l_fAngle = 0.0f;
-  int l_iReturn = EXIT_FAILURE;
-  int l_iPitch;
-  SDL_Event l_sEvent;
-  SDL_Renderer* l_psRenderer = NULL;
-  SDL_Window* l_psWindow = NULL;
-  SDL_Texture* l_psTexture = NULL;
-  SDL_Surface* l_psSurface = NULL;
-  void* l_pvBackBuffer;
-
-  unsigned long* l_paui32BackBuffer = NULL;
-  unsigned long* l_paui32Texture = NULL;
-
-  unsigned short l_ui16OffX = 0;
-
-
-  /* Allocate memory for video buffer */
-  l_paui32BackBuffer = (unsigned long*) malloc (WINDOW_WIDTH*WINDOW_HEIGHT*4);
-  if (NULL == l_paui32BackBuffer) {
-
-    printf ("malloc l_paui32BackBuffer failed !\n");
-  }
-  else {
-
-    /* Init SDL video system */
-    if (0 > SDL_Init (SDL_INIT_EVERYTHING)) {
-
-      printf ("SDL_Init failed: %s\n", SDL_GetError());
-    }
-    else {
-
-      /* Create mainwindow */
-      l_psWindow = SDL_CreateWindow ("FX_RadialBlur",
-                                      SDL_WINDOWPOS_UNDEFINED,
-                                      SDL_WINDOWPOS_UNDEFINED,
-                                      WINDOW_WIDTH,
-                                      WINDOW_HEIGHT,
-                                      SDL_FLAG);
-      if (NULL == l_psWindow) {
-
-        printf ("SDL_CreateWindow failed: %s\n", SDL_GetError());
-      }
-      else {
-
-        /* Create renderer to window */
-        l_psRenderer = SDL_CreateRenderer (l_psWindow, -1, SDL_RENDERER_ACCELERATED);
-        if (NULL == l_psRenderer) {
-
-          printf ("SDL_CreateRenderer failed: %s\n", SDL_GetError());
-        }
-        else {
-
-          /* Load image into surface */
-          l_psSurface = IMG_Load (IMG_PATH);
-          if (NULL == l_psSurface) {
-
-            printf("IMG_Load failed: %s\n", IMG_GetError());
-          }
-          else {
-
-            /* Create texture for renderer */
-            l_psTexture = SDL_CreateTexture (l_psRenderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
-            if (NULL == l_psRenderer) {
-
-              printf ("SDL_CreateTexture failed: %s\n", SDL_GetError());
-            }
-            else {
-
-              /* Lock surface if need */
-              if (SDL_MUSTLOCK (l_psSurface)) {
-
-                if (0 > SDL_LockSurface (l_psSurface)) {
-
-                  printf ("SDL_LockSurface failed: %s\n", SDL_GetError());
-                }
-                else {
-
-                  /* Nothing to do */
-                }
-              }
-              else {
-
-                /* Allocate memory for texture */
-                l_paui32Texture = malloc (l_psSurface->h*l_psSurface->w*sizeof (unsigned long));
-                if (NULL == l_paui32Texture) {
-
-
-                  printf ("malloc l_paui32Texture failed !\n");
-                }
-                else {
-
-                  /* Clear texture buffer */
-                  memset (l_paui32Texture, 0, l_psSurface->h*l_psSurface->w*sizeof (unsigned long));
-
-                  /* For each line */
-                  for (l_i16PosY = 0; l_i16PosY < l_psSurface->h; l_i16PosY++) {
-
-                    /* For each column */
-                    for (l_i16PosX = 0; l_i16PosX < l_psSurface->w; l_i16PosX++) {
-
-                      /* Copy to pixel to texture buffer  */
-                      l_ui32Pixel = (*(unsigned long*)(l_psSurface->pixels + l_i16PosY*(l_psSurface->pitch) + (l_i16PosX * (l_psSurface->pitch/l_psSurface->w))))&0x00FFFFFF;
-                      l_paui32Texture[(l_i16PosY*l_psSurface->w) + l_i16PosX] = l_ui32Pixel;
-
-                    }
-                  }
-
-                  /* Unlock surface if need */
-                  if (SDL_MUSTLOCK(l_psSurface)) {
-
-                    SDL_UnlockSurface(l_psSurface);
-                  }
-                  else {
-
-                    /* Nothing to do */
-                  }
-
-                  /* Main loop */
-                  while (l_ui8Loop) {
-
-                    /* If event pending */
-                    while (1 == SDL_PollEvent (&l_sEvent)) {
-
-                      switch (l_sEvent.type) {
-
-                        case SDL_QUIT: {
-
-                          l_ui8Loop = 0;
-
-                          break;
-                        }
-
-                        case SDL_KEYDOWN: {
-
-                          if (l_sEvent.key.keysym.sym == SDLK_ESCAPE) {
-
-                            l_ui8Loop = 0;
-                          }
-
-                          break;
-                        }
-
-                        default :{
-
-                          break;
-                        }
-                      }
-                    }
-
-#ifdef CLEAR_BACKGROUND
-                    SDL_SetRenderDrawColor (l_psRenderer, 0, 0, 0, 0);
-                    SDL_RenderClear (l_psRenderer);
-#endif /* CLEAR_BACKGROUND */
-
-                    /* Lock texture for update */
-                    if (0 == SDL_LockTexture (l_psTexture, NULL, &l_pvBackBuffer, &l_iPitch)) {
-
-                      memset (l_pvBackBuffer, 0, WINDOW_WIDTH*WINDOW_HEIGHT*sizeof (unsigned long));
-
-                      /* Make distorsion into texture */
-                      for (l_i16PosY = 0; l_i16PosY < WINDOW_HEIGHT; l_i16PosY++) {
-
-                        for (l_i16PosX = 0; l_i16PosX < WINDOW_WIDTH; l_i16PosX++) {
-
-                          unsigned int xx = l_i16PosX + l_ui16OffX;//(WINDOW_WIDTH>>2)*sin (l_fAngle);
-                          unsigned int yy = l_i16PosY;// + (WINDOW_HEIGHT>>3)*cos (l_fAngle);
-
-                          l_ui32Pixel = l_paui32Texture[((yy % l_psSurface->h) * l_psSurface->w) + (xx % l_psSurface->w)];
-                          ((unsigned long*)l_pvBackBuffer)[(l_i16PosY * WINDOW_WIDTH) + l_i16PosX] = l_ui32Pixel;
-                        }
-                      }
-
-                      /* Apply radial blur on backbuffer */
-                      vRenderer (l_pvBackBuffer,
-                                  (WINDOW_WIDTH>>1) + (WINDOW_WIDTH/3)*sin (l_fAngle)*cos (-3.5*l_fAngle),
-                                  (WINDOW_HEIGHT>>1) + (WINDOW_HEIGHT>>2)*cos (l_fAngle*4)*cos (l_fAngle/2.0),
-                                  0.991f);
-
-                      /* Move radial blur */
-                      l_fAngle += 0.002;
-                      l_ui16OffX = (l_ui16OffX + 1) % WINDOW_WIDTH;
-
-                      SDL_Delay(10);
-
-                      /* Unlock texture */
-                      SDL_UnlockTexture (l_psTexture);
-
-                      /* Update video buffer */
-                      SDL_RenderCopy (l_psRenderer, l_psTexture, NULL, NULL);
-
-                      /* Flip back buffer */
-                      SDL_RenderPresent (l_psRenderer);
-                    }
-                    else {
-
-                      /* Nothing to do */
-                    }
-                  }
-
-                  free (l_paui32Texture);
-
-                  l_iReturn = EXIT_SUCCESS;
-                }
-              }
-
-              /* Destroy SDL ressources */
-              SDL_DestroyTexture (l_psTexture);
-            }
-
-            /* Destroy SDL ressources */
-            SDL_FreeSurface (l_psSurface);
-          }
-
-          /* Destroy SDL ressources */
-          SDL_DestroyRenderer (l_psRenderer);
-        }
-
-        /* Destroy SDL ressources */
-        SDL_DestroyWindow (l_psWindow);
-      }
-
-      /* Deinit SDL */
-      SDL_Quit ();
-    }
-
-    /* Free memory */
-    free (l_paui32BackBuffer);
+/*==============================================================================
+Function    : main
+Describe    : Program entry point.
+Parameters  : Don't care.
+Returns     : -1 on error else 0.
+==============================================================================*/
+int main (int argc, char* argv[])
+{
+  /* Locals variables declaration. */
+  bool l_bReturn = false;
+
+  /* Program initialization. */
+  l_bReturn = bSetup ();
+  if (true == l_bReturn)
+  {
+    /* Program loop. */
+    while (true == bLoop () );
   }
 
-  return (l_iReturn);
+  /* Program de-initialization. */
+  vQuit ();
+
+  return (l_bReturn == true ? 0 : -1);
 }
 
 
-/* ============================================================================
-                               Private functions
-============================================================================ */
-
 /* =============================================================================
-Function    :   vRenderer
-
-Description :   Radial blur renderer.
-
-                Schema des octants du radial blur
-
-                        \ 4|3 /       <= Vers le haut de l'ecran (y = 0 )
-                         \ | /
-                        5 \|/ 2
-                        ---|---
-                        6 /|\ 1
-                         / | \
-                        / 7|0 \
-
-Parameters  :   p_paui32Source =,
-                p_pu16Centrex = ,
-                p_u16Centrey = ,
-                p_fLevel.
-
-Return      :   None.
+                               Private functions
 ============================================================================= */
-void vRenderer (unsigned long* p_paui32Source, short p_pu16Centrex, short p_u16Centrey, float p_fLevel) {
 
-  /* Locals variables declaration */
-  register unsigned long l_ui32PixelColor;
-  register unsigned long r,g,b;
-  register unsigned long tol;
-  long l_lIdx;
-  long xx, yy;
-  long xx2, yy2;
-  int col;
-  long iLevel;
+/*==============================================================================
+Function    :   bSetup
+Describe    :   Program setup.
+Parameters  :   None.
+Returns     :   false on error.
+==============================================================================*/
+static bool bSetup (void)
+{
+  /* Locals variables declaration. */
+  bool l_bReturn = false;
 
-  /* Initialisation des parametres du radial blur */
-  col = 65536;
-  iLevel = 259 * p_fLevel;
-  tol = 65535;
+  /* Initialize the SDL library. */
+  if (0 == SDL_Init (SDL_SUBSYSTEM_TO_INIT) )
+  {
+    /* Initialize PNG loader/parser. */
+    if (IMG_INIT_PNG == (IMG_INIT_PNG & IMG_Init (IMG_INIT_PNG) ) )
+    {
+      /* Create window. */
+      g_pSDL_Window = SDL_CreateWindow (FX_NAME, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HIGH, SDL_FLAG);
+      if (NULL != g_pSDL_Window)
+      {
+        /* Create renderer. */
+        g_pSDL_Renderer = SDL_CreateRenderer (g_pSDL_Window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        if (NULL != g_pSDL_Renderer)
+        {
+          /* Allocate a new RGB surface. */
+          g_pSDL_Screen = SDL_CreateRGBSurface (0, SCREEN_WIDTH, SCREEN_HIGH, SCREEN_BPP, RED_MASK, GREEN_MASK, BLUE_MASK, ALPHA_MASK);
+          if (NULL != g_pSDL_Screen)
+          {
+            /* Create a texture for a rendering context. */
+            g_pSDL_Texture = SDL_CreateTexture (g_pSDL_Renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HIGH);
+            if (NULL != g_pSDL_Texture)
+            {
+              /* Fx setup. */
+              l_bReturn = bFxSetup ();
+            }
+            else
+            {
+              printf ("SDL_CreateTexture failed: %s\n", SDL_GetError () );
+            }
+          }
+          else
+          {
+            printf ("SDL_CreateRGBSurface failed: %s\n", SDL_GetError () );
+          }
+        }
+        else
+        {
+          printf ("SDL_CreateWindow failed: %s\n", SDL_GetError () );
+        }
+      }
+      else
+      {
+        printf ("SDL_CreateWindow failed: %s\n", SDL_GetError () );
+      }
+    }
+    else
+    {
+      printf ("IMG_Init failed: %s\n", IMG_GetError () );
+    }
+  }
+  else
+  {
+    printf ("SDL_Init failed: %s\n", SDL_GetError () );
+  }
 
-  /* Ligne separant octant 0 et 1 */
+  return (l_bReturn);
+}
+
+
+/*==============================================================================
+Function    :   bLoop
+Describe    :   Program loop.
+Parameters  :   None.
+Returns     :   false to quit main loop or on error.
+==============================================================================*/
+static bool bLoop (void)
+{
+  /* Locals variables declaration. */
+  SDL_Event l_sEvent;
+  bool l_bReturn = true;
+
+  /* SDL Event management */
+  while(0 != SDL_PollEvent (&l_sEvent) )
+  {
+    switch (l_sEvent.type)
+    {
+      case SDL_KEYDOWN:
+      {
+        if (l_sEvent.key.keysym.sym == SDLK_ESCAPE)
+        {
+          l_bReturn = false;
+        }
+        break;
+      }
+      default:
+      {
+        break;
+      }
+    }
+  }
+
+  /* Fx still running ? */
+  if (true == l_bReturn)
+  {
+    /* Fx loop. */
+    l_bReturn = bFxLoop ();
+    if (true == l_bReturn)
+    {
+      /* Update SDL Texture */
+      if (0 == SDL_UpdateTexture (g_pSDL_Texture, NULL, g_pSDL_Screen->pixels, g_pSDL_Screen->w * sizeof (uint32_t) ) )
+      {
+        /* Render new texture*/
+        if (0 == SDL_RenderCopy (g_pSDL_Renderer, g_pSDL_Texture, NULL, NULL) )
+        {
+          /* Select new render */
+          SDL_RenderPresent (g_pSDL_Renderer);
+        }
+        else
+        {
+          l_bReturn = false;
+          printf ("SDL_RenderCopy failed: %s\n", SDL_GetError () );
+        }
+      }
+      else
+      {
+        l_bReturn = false;
+        printf ("SDL_UpdateTexture failed: %s\n", SDL_GetError () );
+      }
+    }
+  }
+
+  return (l_bReturn);
+}
+
+
+/*==============================================================================
+Function    :   vQuit
+Describe    :   Program quit.
+Parameters  :   None.
+Returns     :   None.
+==============================================================================*/
+static void vQuit (void)
+{
+  /* Fx Quit. */
+  vFxQuit ();
+
+  /* Free RGB surfaces.*/
+  if (NULL != g_pSDL_Screen)
+  {
+    SDL_FreeSurface (g_pSDL_Screen);
+  }
+
+  if (NULL != g_pSDL_Image)
+  {
+    SDL_FreeSurface (g_pSDL_Image);
+  }
+
+  /* Destroy the rendering context and free associated textures. */
+  if (NULL != g_pSDL_Renderer)
+  {
+    SDL_DestroyRenderer (g_pSDL_Renderer);
+  }
+
+  /* Destroy window.*/
+  if (NULL != g_pSDL_Window)
+  {
+    SDL_DestroyWindow (g_pSDL_Window);
+  }
+
+  /* Destroy the texture. */
+  if (NULL != g_pSDL_Texture)
+  {
+    SDL_DestroyTexture (g_pSDL_Texture);
+  }
+
+  /* Cleans up all dynamically loaded library handles, freeing memory. */
+  IMG_Quit ();
+
+  /* Clean up all initialized subsystems. */
+  if (0UL != SDL_WasInit (SDL_INIT_EVERYTHING))
+    SDL_Quit ();
+}
+
+
+/*==============================================================================
+Function    :   bFxSetup
+Describe    :   Fx setup.
+Parameters  :   None.
+Returns     :   false on error.
+==============================================================================*/
+static bool bFxSetup (void)
+{
+  /* Locals variables declaration. */
+  bool l_bReturn = false;
+
+  /* -User specific- */
+  g_pau8Buffer = (uint8_t *)malloc (sizeof (uint8_t) * YMAX * SCREEN_WIDTH);
+  if (NULL != g_pau8Buffer)
+  {
+    g_pau32Buffer = (uint32_t *)malloc (sizeof (uint32_t) * YMAX * SCREEN_WIDTH);
+    if (NULL != g_pau32Buffer)
+    {
+      g_pau32Mini = (uint32_t *)malloc (sizeof (uint32_t) * YMAX * SCREEN_WIDTH);
+      if (NULL != g_pau32Mini)
+      {
+        /* Load a surface from Image file. */
+        g_pSDL_Image = IMG_Load (TEXTURE_FILENAME);
+        if (NULL != g_pSDL_Image)
+        {
+          g_pau8Texture = (uint8_t *)malloc (sizeof (uint8_t) * g_pSDL_Image->h * g_pSDL_Image->w);
+          if (NULL != g_pSDL_Image)
+          {
+            /* For each line */
+            for (uint16_t l_u16PosY = 0u; l_u16PosY < g_pSDL_Image->h; l_u16PosY++)
+            {
+              /* For each column */
+              for (uint16_t l_u16PosX = 0u; l_u16PosX < g_pSDL_Image->w; l_u16PosX++)
+              {
+                /* Copy to pixel to texture buffer  */
+                uint32_t l_u32Pixel = (* (uint32_t *)(  g_pSDL_Image->pixels
+                                                      + l_u16PosY * g_pSDL_Image->pitch
+                                                      + l_u16PosX * g_pSDL_Image->format->BytesPerPixel ) ) & 0x00FFFFFF;
+
+                g_pau8Texture[(l_u16PosY * g_pSDL_Image->w) + l_u16PosX] = (uint8_t)(   0.21f * GET_RED(l_u32Pixel)
+                                                                                      + 0.72f * GET_GREEN(l_u32Pixel)
+                                                                                      + 0.07f * GET_BLUE(l_u32Pixel) );
+              }
+            }
+
+            l_bReturn = true;
+          }
+        }
+        else
+        {
+          printf ("IMG_Load failed: %s\n", IMG_GetError () );
+        }
+      }
+    }
+  }
+  /* -User specific- */
+
+  return (l_bReturn);
+}
+
+
+/*==============================================================================
+Function    :   bFxQuit
+Describe    :   Fx Quit.
+Parameters  :   None.
+Returns     :   None.
+==============================================================================*/
+static void vFxQuit (void)
+{
+  /* -User specific- */
+  if (NULL != g_pau8Buffer)
+  {
+    free (g_pau8Buffer);
+  }
+  if (NULL != g_pau32Buffer)
+  {
+    free (g_pau32Buffer);
+  }
+  if (NULL != g_pau32Mini)
+  {
+    free (g_pau32Mini);
+  }
+  /* -User specific- */
+}
+
+
+/*==============================================================================
+Function    :   bFxLoop
+Describe    :   Fx loop.
+Parameters  :   None.
+Returns     :   false on error.
+==============================================================================*/
+static bool bFxLoop (void)
+{
+  /* Locals variables declaration. */
+  bool l_bReturn = false;
+
+  /* -User specific- */
+  static float l_fAngle  = 0.0f;
+  static uint16_t l_u16OffsetX = 0u;//128 + 127*sin(l_fAngle);
+  uint16_t l_u16OffsetY  = 272 + 128*cos(l_fAngle);
+
+  /* Copy texture to frame buffer */
+  for (uint16_t l_u16IndexY = 0u; l_u16IndexY < YMAX; l_u16IndexY++)
+  {
+    for (uint16_t l_u16IndexX = 0u; l_u16IndexX < SCREEN_WIDTH; l_u16IndexX++)
+    {
+      uint8_t l_u8Color = g_pau8Texture[  ( ( (l_u16IndexY + l_u16OffsetY) % g_pSDL_Image->h) * g_pSDL_Image->w)
+                                        + ( (l_u16IndexX + l_u16OffsetX) % g_pSDL_Image->w)];
+
+
+      g_pau8Buffer[(l_u16IndexY * SCREEN_WIDTH) + l_u16IndexX] = l_u8Color;
+    }
+  }
+
+  l_fAngle += 0.08f;
+  l_u16OffsetX+=4;
+
+  /* Apply radial blur to back buffer */
+  vMakeRadialBlur ();
+  vMakeAndDisplayMini ();
+
+  /* Display effect. */
+  for (uint16_t l_u16IndexY = 0u; l_u16IndexY < YMAX; l_u16IndexY++)
+  {
+    for (uint16_t l_u16IndexX = 0u; l_u16IndexX < SCREEN_WIDTH; l_u16IndexX++)
+    {
+      uint32_t *l_pau32Screen =   g_pSDL_Screen->pixels
+                        + ( (l_u16IndexY + (SCREEN_HIGH/6u) ) * SCREEN_WIDTH * g_pSDL_Screen->format->BytesPerPixel)
+                        + (l_u16IndexX * g_pSDL_Screen->format->BytesPerPixel);
+      *l_pau32Screen = g_pau32Buffer[(l_u16IndexY * SCREEN_WIDTH) + l_u16IndexX];
+    }
+  }
+
+  l_bReturn = true;
+  /* -User specific- */
+
+  return (l_bReturn);
+}
+
+
+/* -User specific- */
+/*==============================================================================
+Function    :   vMakeRadialBlur
+Describe    :   Make Fx rotozoom.
+Parameters  :   None.
+Returns     :   None.
+==============================================================================*/
+static void vMakeRadialBlur (void)
+{
+  /* Locals variables declaration. */
+  const uint32_t col = 10000;
+  uint32_t tol = 65278;
+
+  /*
+    Radial-blur octantSchema des octants du radial blur
+
+          \ 4|3 /       <= To upper screen (y = 0 )
+           \ | /
+          5 \|/ 2
+          ---|---
+          6 /|\ 1
+           / | \
+          / 7|0 \
+  */
+
+	/* Line between octant 0 and 1. */
 #ifdef LINE01
-  for (l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Diagonale (+1, +1) */
-    xx = p_pu16Centrex + l_lIdx;
-    yy = p_u16Centrey + l_lIdx;
-    if (yy >= WINDOW_HEIGHT) yy = WINDOW_HEIGHT - 1;
-    if (xx >= WINDOW_WIDTH)  xx = WINDOW_WIDTH - 1;
-
-    /* Get pixel color from (XX, YY) */
-    l_ui32PixelColor = p_paui32Source[xx + (yy * WINDOW_WIDTH)];
-
-    /* R,G and B separation */
-    r = col * (l_ui32PixelColor>>16);
-    g = col * ((l_ui32PixelColor>>8) & 0xff);
-    b = col * (l_ui32PixelColor & 0xff) ;
-
-    /* Get pixel color from (XX-1, YY-1) */
-    l_ui32PixelColor = p_paui32Source[xx - 1 + (yy - 1)*WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r += (tol * ((((l_ui32PixelColor>>16) & 0xff) * iLevel)>>8 ))  & 0xffff0000;
-    g += (tol * ((((l_ui32PixelColor>>8)  & 0xff) * iLevel)>>8 ))  & 0xffff0000;
-    b += (tol * (((l_ui32PixelColor & 0xff) * iLevel)>>8)) & 0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>255)        b=255;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-#endif
-
-  /* Ligne separant octant 1 et 2 */
-#ifdef LINE12
-  for(l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Horizontale (+1, 0) */
-    xx = p_pu16Centrex + l_lIdx;
-    yy = p_u16Centrey;
-
-    if (xx >= WINDOW_WIDTH) xx = WINDOW_WIDTH - 1;
-
-    /* Get pixel color from (XX,YY) */
-    l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation */
-    r = col * (l_ui32PixelColor>>16);
-    g = col * ((l_ui32PixelColor>>8)&0xff);
-    b = col * (l_ui32PixelColor&0xff) ;
-
-    /* Get pixel color from (XX - 1, YY) */
-    l_ui32PixelColor=p_paui32Source[xx - 1 + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r += (tol * ((((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    g += (tol * ((((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    b += (tol * ((( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>255)        b=255;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-#endif
-
-  /* Ligne separant octant 2 et 3 */
-#ifdef LINE23
-  for (l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Diagonale (+1,-1) */
-    xx = p_pu16Centrex + l_lIdx;
-    yy = p_u16Centrey - l_lIdx;
-    if (yy < 0) yy = 0;
-    if (xx >= WINDOW_WIDTH) xx = WINDOW_WIDTH - 1;
-
-    /* Get pixel color from (XX, YY) */
-    l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation */
-    r = col * (l_ui32PixelColor >> 16);
-    g = col * ((l_ui32PixelColor >> 8) & 0xff);
-    b = col * (l_ui32PixelColor & 0xff) ;
-
-    /* Get pixel color from (XX-1, YY+1) */
-    l_ui32PixelColor=p_paui32Source[xx /*+ WINDOW_WIDTH*/ - 1 + (yy + 1) *WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r += (tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    g += (tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    b += (tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>0xff)      b=0xff;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-
-#endif
-
-  /* Ligne separant octant 3 et 4 */
-#ifdef LINE34
-  for (l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Verticale (0, -1) */
-    xx = p_pu16Centrex;
-    yy = p_u16Centrey - l_lIdx;
-    if (yy < 0) yy = 0;
-
-    /* Get pixel color from (XX, YY) */
-    l_ui32PixelColor=p_paui32Source[xx + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation */
-    r=col*(l_ui32PixelColor>>16);
-    g=col*((l_ui32PixelColor>>8)&0xff);
-    b=col*(l_ui32PixelColor&0xff) ;
-
-    /* Get pixel color from (XX,YY+1) */
-    l_ui32PixelColor=p_paui32Source[xx + /*WINDOW_WIDTH+*/ (yy + 1)*WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>255)        b=255;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-
-#endif
-
-  /* Ligne separant octant 5 er 4 */
-#ifdef LINE45
-  for(l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Diagonale (-1,-1) */
-    xx = p_pu16Centrex - l_lIdx;
-    yy = p_u16Centrey - l_lIdx;
-    if (yy < 0) yy = 0;
-    if (xx < 0) xx = 0;
-
-    /* Get pixel color from (XX,YY) */
-    l_ui32PixelColor=p_paui32Source[xx + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation */
-    r=col*(l_ui32PixelColor>>16);
-    g=col*((l_ui32PixelColor>>8)&0xff);
-    b=col*(l_ui32PixelColor&0xff) ;
-
-    /* Get pixel color from (XX + 1, YY + 1) */
-    l_ui32PixelColor=p_paui32Source[xx /*+ WINDOW_WIDTH*/+ 1 + (yy + 1)*WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>255)        b=255;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-#endif
-
-  /* Ligne separant octant 5 et 6 */
-#ifdef LINE56
-  for (l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Horizontale (-1,0) */
-    xx=p_pu16Centrex - l_lIdx;
-    yy=p_u16Centrey;
-    if (xx < 0) xx = 0;
-
-    /* Get pixel color from (XX, YY) */
-    l_ui32PixelColor=p_paui32Source[xx + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation */
-    r=col*(l_ui32PixelColor>>16);
-    g=col*((l_ui32PixelColor>>8)&0xff);
-    b=col*(l_ui32PixelColor&0xff) ;
-
-    /* Get pixel color from (XX + 1, YY) */
-    l_ui32PixelColor=p_paui32Source[xx + 1 + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>255)        b=255;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-#endif
-
-  /* Ligne separant octant 6 et 7 */
-#ifdef LINE67
-  for (l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Diagonale (-1,+1) */
-    xx = p_pu16Centrex - l_lIdx;
-    yy = p_u16Centrey + l_lIdx;
-    if (xx < 0) xx = 0;
-    if (yy >= WINDOW_HEIGHT) yy = WINDOW_HEIGHT - 1;
-
-    /* Get pixel color from (XX,YY) */
-    l_ui32PixelColor=p_paui32Source[xx + yy*WINDOW_WIDTH];
-
-    /* R,G and B separation */
-    r=col*(l_ui32PixelColor>>16);
-    g=col*((l_ui32PixelColor>>8)&0xff);
-    b=col*(l_ui32PixelColor&0xff) ;
-
-    /* Get pixel color from (XX-1,YY-1) */
-    l_ui32PixelColor=p_paui32Source[xx/*-WINDOW_WIDTH*/ + 1 +(yy - 1)*WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>255)        b=255;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-#endif
-
-  /* Ligne separant octant 7 et 0 */
-#ifdef LINE70
-  for (l_lIdx = 1; l_lIdx < WINDOW_WIDTH; l_lIdx++) {
-
-    /* Verticale (0,+1) */
-    xx = p_pu16Centrex;
-    yy = p_u16Centrey + l_lIdx;
-    if (yy >= WINDOW_HEIGHT) yy = WINDOW_HEIGHT - 1;
-
-    /* Get pixel color from (XX,YY) */
-    l_ui32PixelColor=p_paui32Source[xx+yy*WINDOW_WIDTH];
-
-    /* R,G and B separation */
-    r=col*(l_ui32PixelColor>>16);
-    g=col*((l_ui32PixelColor>>8)&0xff);
-    b=col*(l_ui32PixelColor&0xff) ;
-
-    /* Get pixel color from (XX, YY - 1) */
-    l_ui32PixelColor=p_paui32Source[xx /*- WINDOW_WIDTH*/ + (yy - 1)*WINDOW_WIDTH];
-
-    /* R,G and B separation and add with last results */
-    r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-    b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-    /* Color clipping */
-    if(r>0xff0000)  r=0xff0000;    g=g>>8;
-    if(g>0xff00)    g=0xff00;      b=b>>16;
-    if(b>255)        b=255;
-
-    /* Copy to (XX,YY) */
-    p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-  }
-#endif
-
-  /* Gestion des octants 0 et 1 */
-  l_lIdx = 1;
-  for (yy2 = p_u16Centrey + 1; yy2 < WINDOW_HEIGHT; yy2++) {
-
-    /* Octant 0 */
-#ifdef OCTANT0
-    for (xx2 = p_pu16Centrex + 1; xx2 < p_pu16Centrex + l_lIdx; xx2++)  {
-
-      if (xx2 >= WINDOW_WIDTH) xx = WINDOW_WIDTH - 1; else xx=xx2;
-      if (yy2 >= WINDOW_HEIGHT) yy = WINDOW_HEIGHT - 1; else yy=yy2;
-
-      /* Get pixel color from (XX, YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH];
-
-      /* R,G and B separation */
-      r=col*(l_ui32PixelColor>>16);
-      g=col*((l_ui32PixelColor>>8)&0xff);
-      b=col*(l_ui32PixelColor&0xff) ;
-      tol=((xx-p_pu16Centrex)<<16)/(yy-p_u16Centrey);
-
-      /* Get pixel color from (XX - 1, YY - 1) */
-      l_ui32PixelColor = p_paui32Source[xx - 1 + ((yy - 1)*WINDOW_WIDTH)/* - (WINDOW_WIDTH + 1)*/];
-
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Get pixel color from (XX, YY - 1) */
-      l_ui32PixelColor = p_paui32Source[xx + ((yy - 1)*WINDOW_WIDTH)/* - WINDOW_WIDTH*/];
-
-      tol=65536-tol;
-      r+=(tol*( (((l_ui32PixelColor>>16)&0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000 ;
-
-      /* Color clipping */
-      if(r>0xff0000)  r=0xff0000;    g=g>>8;
-      if(g>0xff00)    g=0xff00;      b=b>>16;
-      if(b>255)        b=255;
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Diagonal (+1, +1) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u) + l_u8IndexX;
+		uint16_t l_u16DiagY = (YMAX>>1u)         + l_u8IndexX;
+
+    /* Cropping. */
+		if (   (l_u16DiagX >= 0)
+        && (l_u16DiagX < SCREEN_WIDTH)
+        && (l_u16DiagY >= 0)
+        && (l_u16DiagY < YMAX) )
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + (l_u16DiagY * SCREEN_WIDTH)])>>8;
+
+      /* Get pixel from (XX - 1, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u16DiagX - 1 + ((l_u16DiagY - 1) * SCREEN_WIDTH)])>>8 & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
+      g_pau8Buffer[l_u16DiagX + l_u16DiagY * SCREEN_WIDTH] = l_u32Val;
     }
+	}
+#endif
+
+  /* Ligne separant octant 1 et 2. */
+#ifdef LINE12
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Horizontale (+1, 0) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u) + l_u8IndexX;
+		uint16_t l_u16DiagY = YMAX>>1u;
+
+    if (  (l_u16DiagX >= 0) && (l_u16DiagX < SCREEN_WIDTH)
+        &&(l_u16DiagY >= 0) && (l_u16DiagY < YMAX) )
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH])>>8;
+
+      /* Get pixel from (XX - 1, YY) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u16DiagX - 1 + l_u16DiagY*SCREEN_WIDTH])>>8 & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
+
+      /* Copy to (XX,YY) */
+      g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH] = l_u32Val;
+    }
+	}
+#endif
+
+  /* Ligne separant octant 2 et 3. */
+#ifdef LINE23
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Diagonale (+1,-1) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u)  + l_u8IndexX;
+		uint16_t l_u16DiagY = (YMAX>>1u)          - l_u8IndexX;
+
+    if (  (l_u16DiagX >= 0) && (l_u16DiagX < SCREEN_WIDTH)
+        &&(l_u16DiagY >= 0) && (l_u16DiagY < YMAX) )
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH])>>8;
+
+      /* Get pixel from (XX - 1, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u16DiagX - 1 + (l_u16DiagY + 1) *SCREEN_WIDTH])>>8 & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
+
+      /* Copy to (XX,YY) */
+      g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH] = l_u32Val;
+    }
+	}
+#endif
+
+  /* Ligne separant octant 3 et 4. */
+#ifdef LINE34
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Verticale (0, -1) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u);
+		uint16_t l_u16DiagY = (YMAX>>1u) - l_u8IndexX;
+
+    if (  (l_u16DiagX >= 0) && (l_u16DiagX < SCREEN_WIDTH)
+        &&(l_u16DiagY >= 0) && (l_u16DiagY < YMAX) )
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH])>>8;
+
+      /* Get pixel from (XX, YY - 1) and add saturations */
+      l_u32Val += (tol* g_pau8Buffer[l_u16DiagX + (l_u16DiagY + 1)*SCREEN_WIDTH])>>8 & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
+
+      /* Copy to (XX,YY) */
+      g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH] = l_u32Val;
+    }
+	}
+#endif
+
+	/* Ligne separant octant 5 er 4. */
+#ifdef LINE45
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Diagonale (-1,-1) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u) - l_u8IndexX;
+		uint16_t l_u16DiagY = (YMAX>>1u) - l_u8IndexX;
+
+    if (  (l_u16DiagX >= 0) && (l_u16DiagX < SCREEN_WIDTH)
+        &&(l_u16DiagY >= 0) && (l_u16DiagY < YMAX) )
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH])>>8;
+
+      /* Get pixel from (XX + 1, YY + 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u16DiagX + 1 + (l_u16DiagY + 1)*SCREEN_WIDTH])>>8 & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
+
+      /* Copy to (XX,YY) */
+      g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH] = l_u32Val;
+    }
+	}
+#endif
+
+  /* Ligne separant octant 5 et 6. */
+#ifdef LINE56
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Horizontale (-1,0) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u) - l_u8IndexX;
+		uint16_t l_u16DiagY = (YMAX>>1u);
+
+    if (  (l_u16DiagX >= 0) && (l_u16DiagX < SCREEN_WIDTH)
+        &&(l_u16DiagY >= 0) && (l_u16DiagY < YMAX) )
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH])>>8;
+
+      /* Get pixel from (XX + 1, YY) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u16DiagX + 1 + l_u16DiagY*SCREEN_WIDTH])>>8 & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
+
+      /* Copy to (XX,YY) */
+      g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH] = l_u32Val;
+    }
+	}
+#endif
+
+  /* Ligne separant octant 6 et 7. */
+#ifdef LINE67
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Diagonale (-1,+1) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u) - l_u8IndexX;
+		uint16_t l_u16DiagY = (YMAX>>1u) + l_u8IndexX;
+
+    if (  (l_u16DiagX >= 0) && (l_u16DiagX < SCREEN_WIDTH)
+        &&(l_u16DiagY >= 0) && (l_u16DiagY < YMAX) )
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH])>>8;
+
+      /* Get pixel from (XX + 1, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u16DiagX + 1 +(l_u16DiagY - 1)*SCREEN_WIDTH])>>8 & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
+
+      /* Copy to (XX,YY) */
+      g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH] = l_u32Val;
+    }
+	}
+#endif
+
+	/* Ligne separant octant 7 et 0. */
+#ifdef LINE70
+	for (uint16_t l_u8IndexX = 1u; l_u8IndexX < (SCREEN_WIDTH>>1u); l_u8IndexX++)
+  {
+    /* Verticale (0,+1) */
+		uint16_t l_u16DiagX = (SCREEN_WIDTH>>1u);
+		uint16_t l_u16DiagY = ((YMAX>>1u) + l_u8IndexX);
+
+    if (  (l_u16DiagX >= 0) && (l_u16DiagX < SCREEN_WIDTH)
+        &&(l_u16DiagY >= 0) && (l_u16DiagY < YMAX) )
+    {
+
+    /* Get pixel from (XX, YY) */
+    uint32_t l_u32Val = (col * g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH])>>8;
+
+    /* Get pixel from (XX, YY - 1) and add saturations */
+    l_u32Val += (tol * g_pau8Buffer[l_u16DiagX + (l_u16DiagY - 1)*SCREEN_WIDTH])>>8 & 0xffffff00;
+
+    /* Clipping */
+    l_u32Val = l_u32Val>>8;
+    if (l_u32Val > 255) l_u32Val = 255;
+
+    /* Copy to (XX,YY) */
+    g_pau8Buffer[l_u16DiagX + l_u16DiagY*SCREEN_WIDTH] = l_u32Val;
+    }
+	}
+#endif
+
+	/* Gestion des octants 0 et 1. */
+	uint16_t l_u16Offset = 1;
+	for (uint16_t l_u8IndexY = (YMAX>>1u) + 1; l_u8IndexY < YMAX; l_u8IndexY++)
+  {
+    /* Octant 0 */
+#ifdef OCTANT0
+    for (uint16_t l_u8IndexX = (SCREEN_WIDTH>>1u) + 1; l_u8IndexX < (SCREEN_WIDTH>>1u) + l_u16Offset; l_u8IndexX++)
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u8IndexX + l_u8IndexY*SCREEN_WIDTH])>>8;
+
+      //
+      tol=( (l_u8IndexX - (SCREEN_WIDTH>>1u) )<<8) / (l_u8IndexY - (YMAX>>1u) );
+
+      /* Get pixel from (XX - 1, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u8IndexX - 1 + ( (l_u8IndexY - 1) * SCREEN_WIDTH)]) & 0xffffff00;
+
+      //
+      tol = 256 - tol;
+
+      /* Get pixel from (XX, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u8IndexX + ( (l_u8IndexY - 1) * SCREEN_WIDTH)]) & 0xffffff00;
+
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255)
+        l_u32Val = 255;
+
+      /* Copy to (XX,YY) */
+      g_pau8Buffer[l_u8IndexX + l_u8IndexY*SCREEN_WIDTH] = l_u32Val;
+		}
 #endif
 
      /* Octant 1 */
 #ifdef OCTANT1
-    for (xx2 = p_pu16Centrex + l_lIdx + 1; xx2 < WINDOW_WIDTH; xx2++) {
+		for (uint16_t l_u8IndexX = (SCREEN_WIDTH>>1u) + l_u16Offset + 1; l_u8IndexX < SCREEN_WIDTH; l_u8IndexX++)
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_u8IndexX + l_u8IndexY*SCREEN_WIDTH])>>8;
 
-      if (xx2 >= WINDOW_WIDTH) xx = WINDOW_WIDTH - 1; else xx=xx2;
-      if (yy2 >= WINDOW_HEIGHT) yy = WINDOW_HEIGHT - 1; else yy=yy2;
+      //vy/vx
+      tol = ((l_u8IndexY-(YMAX>>1u)) << 8) / (l_u8IndexX - (SCREEN_WIDTH>>1u) );
 
-      /* Get pixel color from (XX,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH];
+      /* Get pixel from (XX - 1, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u8IndexX - 1 + (l_u8IndexY - 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      /* R,G and B separation */
-      r=col*(l_ui32PixelColor>>16);    //col = define
-      g=col*((l_ui32PixelColor>>8)&0xff);
-      b=col*(l_ui32PixelColor&0xff) ;
-      tol=((yy-p_u16Centrey)<<16)/(xx-p_pu16Centrex);    //vy/vx
+      //
+      tol = 256-tol;
 
-      /* Get pixel color from (XX - 1, YY - 1) */
-      l_ui32PixelColor = p_paui32Source[xx - 1 + (yy - 1)*WINDOW_WIDTH/* - (WINDOW_WIDTH+1)*/];
+      /* Get pixel from (XX-1, YY) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_u8IndexX + l_u8IndexY*SCREEN_WIDTH - 1]) & 0xffffff00;
 
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Get pixel color from (XX-1,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH - 1];
-
-      tol=65536-tol;
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Color clipping */
-      if(r>0xff0000)  r=0xff0000;    g=g>>8;
-      if(g>0xff00)    g=0xff00;      b=b>>16;
-      if(b>255)        b=255;
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-    }
+      g_pau8Buffer[l_u8IndexX + l_u8IndexY*SCREEN_WIDTH] = l_u32Val;
+		}
 #endif
 
-    l_lIdx++;
-  }
+		l_u16Offset++;
+	}
 
-
-  /* Gestion des octants 7 et 6 */
-  l_lIdx = 1;
-  for (yy2 = p_u16Centrey + 1; yy2 < WINDOW_HEIGHT; yy2++) {
-
+	/* Gestion des octants 7 et 6. */
+	l_u16Offset = 1;
+	for (int16_t l_s16IndexY = (YMAX>>1u) + 1; l_s16IndexY < YMAX; l_s16IndexY++)
+  {
     /* Octant 7 */
 #ifdef OCTANT7
-    for (xx2 = p_pu16Centrex - 1; xx2 > p_pu16Centrex - l_lIdx; xx2--) {
+		for (int16_t l_s16IndexX = (SCREEN_WIDTH>>1u) - 1; l_s16IndexX > (SCREEN_WIDTH>>1u) - l_u16Offset; l_s16IndexX--)
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH])>>8;
 
-      if (xx2 < 0) xx = 0; else xx=xx2;
-      if (yy2 >= WINDOW_HEIGHT) yy = WINDOW_HEIGHT - 1; else yy=yy2;
+      //-vx/vy
+      tol = (((SCREEN_WIDTH>>1u) - l_s16IndexX) << 8) / (l_s16IndexY - (YMAX>>1u));
 
+      /* Get pixel from (XX + 1, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + 1 + (l_s16IndexY - 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      /* Get pixel color from (XX,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH];
+      //
+      tol = 256 - tol;
 
-      /* R,G and B separation */
-      r=col*(l_ui32PixelColor>>16);    //col = define
-      g=col*((l_ui32PixelColor>>8)&0xff) ;
-      b=col*(l_ui32PixelColor&0xff) ;
-      tol=((p_pu16Centrex-xx)<<16)/(yy-p_u16Centrey);    //-vx/vy
+      /* Get pixel from (XX, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + (l_s16IndexY - 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      /* Get pixel color from (XX+1,YY-1) */
-      l_ui32PixelColor = p_paui32Source[xx + 1 + (yy - 1)*WINDOW_WIDTH/* -(WINDOW_WIDTH-1)*/];
-
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Get pixel color from (XX,YY-1) */
-      l_ui32PixelColor=p_paui32Source[xx + (yy - 1)*WINDOW_WIDTH/* - WINDOW_WIDTH*/];
-
-      tol=65536-tol;
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Color clipping */
-      if(r>0xff0000)  r=0xff0000;    g=g>>8;
-      if(g>0xff00)    g=0xff00;      b=b>>16;
-      if(b>255)        b=255;
-
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
+      g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH] = l_u32Val;
     }
 #endif
 
     /* Octant 6 */
 #ifdef OCTANT6
-    for (xx2 = p_pu16Centrex - l_lIdx -1 ;xx2 >= 0; xx2--) {
+		for (int16_t l_s16IndexX = (SCREEN_WIDTH>>1u) - l_u16Offset -1 ;l_s16IndexX >= 0; l_s16IndexX--)
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH])>>8;
 
-      if (xx2 < 0) xx = 0; else xx=xx2;
-      if (yy2 >= WINDOW_HEIGHT) yy = WINDOW_HEIGHT - 1; else yy=yy2;
+      //-vy/vx
+      tol=(((YMAX>>1u)-l_s16IndexY)<<8)/(l_s16IndexX-(SCREEN_WIDTH>>1u));
 
+      /* Get pixel from (XX + 1, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + 1 + (l_s16IndexY - 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      /* Get pixel color from (XX,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH];
+      //
+      tol = 256 - tol;
 
-      /* R,G and B separation */
-      r=col*(l_ui32PixelColor>>16);    //col = define
-      g=col*((l_ui32PixelColor>>8)&0xff) ;
-      b=col*(l_ui32PixelColor&0xff) ;
-      tol=((p_u16Centrey-yy)<<16)/(xx-p_pu16Centrex);    //-vy/vx
+      /* Get pixel from (XX + 1, YY) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH + 1]) & 0xffffff00;
 
-      /* Get pixel color from (XX+1,YY-1) */
-      l_ui32PixelColor = p_paui32Source[xx + 1 + (yy - 1)*WINDOW_WIDTH /*- (WINDOW_WIDTH - 1)*/ ];
-
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Get pixel color from (XX+1,YY) */
-      l_ui32PixelColor=p_paui32Source[xx + yy*WINDOW_WIDTH + 1];
-
-      tol=65536-tol;
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Color clipping */
-      if(r>0xff0000)  r=0xff0000;    g=g>>8;
-      if(g>0xff00)    g=0xff00;      b=b>>16;
-      if(b>255)        b=255;
-
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-    }
+      g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH] = l_u32Val;
+		}
 #endif
 
-    l_lIdx++;
-  }
+    l_u16Offset++;
+	}
 
-  /* Gestion des octants 3 et 2 */
-  l_lIdx = 1;
-  for (yy2 = p_u16Centrey - 1; yy2 >= 0; yy2--) {
-
+	/* Gestion des octants 3 et 2. */
+	l_u16Offset = 1;
+  for (int16_t l_s16IndexY = (YMAX>>1u) - 1; l_s16IndexY >= 0; l_s16IndexY--)
+  {
     /* Octant 3 */
 #ifdef OCTANT3
-    for (xx2 = p_pu16Centrex + 1; xx2 < p_pu16Centrex + l_lIdx; xx2++) {
+		for (int16_t l_s16IndexX = (SCREEN_WIDTH>>1u) + 1; l_s16IndexX < (SCREEN_WIDTH>>1u) + l_u16Offset; l_s16IndexX++)
+    {
+			/* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH])>>8;
 
-      if (xx2 >= WINDOW_WIDTH) xx = WINDOW_WIDTH - 1; else xx=xx2;
-      if (yy2 < 0) yy = 0; else yy=yy2;
+      //-vx/vy
+      tol = ((l_s16IndexX - (SCREEN_WIDTH>>1u)) << 8) / ((YMAX>>1u) - l_s16IndexY);
 
-      /* Get pixel color from (XX,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH];
+      /* Get pixel from (XX - 1, YY + 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX - 1 + (l_s16IndexY + 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      /* R,G and B separation */
-      r=col*(l_ui32PixelColor>>16);    //col = define
-      g=col*((l_ui32PixelColor>>8)&0xff) ;
-      b=col*(l_ui32PixelColor&0xff) ;
-      tol=((xx-p_pu16Centrex)<<16)/(p_u16Centrey-yy);    //-vx/vy
+      //
+      tol = 256 - tol;
 
-      /* Get pixel color from (XX - 1,YY + 1) */
-      l_ui32PixelColor = p_paui32Source[xx - 1 + (yy + 1)*WINDOW_WIDTH/*+(WINDOW_WIDTH-1)*/];
+      /* Get pixel from (XX, YY + 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + (l_s16IndexY + 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Get pixel color from (XX,YY + 1) */
-      l_ui32PixelColor = p_paui32Source[xx + (yy + 1)*WINDOW_WIDTH/*+ WINDOW_WIDTH*/];
-
-      tol=65536-tol;
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Color clipping */
-      if(r>0xff0000)  r=0xff0000;    g=g>>8;
-      if(g>0xff00)    g=0xff00;      b=b>>16;
-      if(b>255)        b=255;
-
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
+      g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH] = l_u32Val;
 
-    }
+		}
 #endif
 
     /* Octant 2 */
-    //for(xx=finx+1;xx<WINDOW_WIDTH;xx++) {
 #ifdef OCTANT2
-    for(xx2 = p_pu16Centrex + l_lIdx + 1; xx2 < WINDOW_WIDTH; xx2++) {
+		for(int16_t l_s16IndexX = (SCREEN_WIDTH>>1u) + l_u16Offset + 1; l_s16IndexX < SCREEN_WIDTH; l_s16IndexX++)
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH])>>8;
 
-      if (xx2 >= WINDOW_WIDTH) xx = WINDOW_WIDTH - 1; else xx=xx2;
-      if (yy2 < 0) yy = 0; else yy=yy2;
+      //-vy/vx
+      tol = (((YMAX>>1u) - l_s16IndexY) << 8) / (l_s16IndexX - (SCREEN_WIDTH>>1u));
 
-      /* Get pixel color from (XX,YY) */
-      l_ui32PixelColor = p_paui32Source[xx+yy*WINDOW_WIDTH];
+      /* Get pixel from (XX - 1, YY + 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX - 1 + (l_s16IndexY + 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      /* R,G and B separation */
-      r=col*(l_ui32PixelColor>>16);    //col = define
-      g=col*((l_ui32PixelColor>>8)&0xff) ;
-      b=col*(l_ui32PixelColor&0xff) ;
+      //
+      tol = 256 - tol;
 
-      tol=((p_u16Centrey-yy)<<16)/(xx-p_pu16Centrex);    //-vy/vx
+      /* Get pixel from (XX, YY - 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH - 1]) & 0xffffff00;
 
-      /* Get pixel color from (XX,YY-1) */
-      l_ui32PixelColor = p_paui32Source[xx - 1 + (yy + 1)*WINDOW_WIDTH/* + (WINDOW_WIDTH - 1)*/];
-
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Get pixel color from (XX-1,YY) */
-      l_ui32PixelColor=p_paui32Source[xx + yy*WINDOW_WIDTH - 1];
-
-      tol=65536-tol;
-      r+=(tol*( (((l_ui32PixelColor>>16) &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      g+=(tol*( (((l_ui32PixelColor>>8)  &0xff  )*iLevel)>>8 ))  &0xffff0000;
-      b+=(tol*( (( l_ui32PixelColor      &0xff  )*iLevel)>>8 ))  &0xffff0000;
-
-      /* Color clipping */
-      if(r>0xff0000)  r=0xff0000;    g=g>>8;
-      if(g>0xff00)    g=0xff00;      b=b>>16;
-      if(b>255)        b=255;
-
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-    }
+      g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH] = l_u32Val;
+		}
 
 #endif
 
-    l_lIdx++;
-  }
+		l_u16Offset++;
+	}
 
-  /* Gestion des octants 4 et 5 */
-  l_lIdx = 1;
-  for (yy2 = p_u16Centrey - 1; yy2 >= 0; yy2--) {
-
-    /* Octant 4 */
+	/* Gestion des octants 4 et 5. */
+	l_u16Offset = 1;
+	for (int16_t l_s16IndexY = (YMAX>>1u) - 1; l_s16IndexY >= 0; l_s16IndexY--)
+  {
+		/* Octant 4 */
 #ifdef OCTANT4
-     for (xx2 = p_pu16Centrex - 1; xx2 > p_pu16Centrex - l_lIdx; xx2--) {
+ 		for (int16_t l_s16IndexX = (SCREEN_WIDTH>>1u) - 1; l_s16IndexX > (SCREEN_WIDTH>>1u) - l_u16Offset; l_s16IndexX--)
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_s16IndexX+l_s16IndexY*SCREEN_WIDTH])>>8;
 
-      if (xx2 < 0) xx = 0; else xx = xx2;
-      if (yy2 < 0) yy = 0; else yy = yy2;
+      //vx/vy
+      tol = ((l_s16IndexX-(SCREEN_WIDTH>>1u))<<8)/(l_s16IndexY-(YMAX>>1u));
 
-      /* Get pixel color from (XX,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy * WINDOW_WIDTH];
+      /* Get pixel from (XX + 1, YY + 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + 1 + (l_s16IndexY + 1) * SCREEN_WIDTH]) & 0xffffff00;
 
-      /* R,G and B separation */
-      r = col * (l_ui32PixelColor  >> 16);
-      g = col * ((l_ui32PixelColor >> 8) & 0xff);
-      b = col * (l_ui32PixelColor        & 0xff);
-      tol = ((xx - p_pu16Centrex) << 16) / (yy - p_u16Centrey);
+      //
+      tol = 256 - tol;
 
-      /* Get pixel color from (XX + 1, YY + 1) */
-      l_ui32PixelColor = p_paui32Source[xx + 1 + (yy + 1)*WINDOW_WIDTH];
+      /* Get pixel from (XX, YY + 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + (l_s16IndexY + 1) * SCREEN_WIDTH]) & 0xffffff00;
 
-      r += (tol * ((((l_ui32PixelColor >> 16) & 0xff) * iLevel) >> 8)) & 0xffff0000;
-      g += (tol * ((((l_ui32PixelColor >> 8)  & 0xff) * iLevel) >> 8)) & 0xffff0000;
-      b += (tol * ((( l_ui32PixelColor        & 0xff) * iLevel) >> 8)) & 0xffff0000;
-
-      /* Get pixel color from (XX, YY + 1) */
-      l_ui32PixelColor=p_paui32Source[xx + (yy + 1) * WINDOW_WIDTH];
-
-      tol = 65536 - tol;
-      r += (tol * ((((l_ui32PixelColor >> 16) & 0xff) * iLevel) >> 8 ))  & 0xffff0000;
-      g += (tol * ((((l_ui32PixelColor >> 8)  & 0xff) * iLevel) >> 8 ))  & 0xffff0000;
-      b += (tol * ((( l_ui32PixelColor        & 0xff) * iLevel) >> 8 ))  & 0xffff0000;
-
-      /* Color clipping */
-      if (r > 0xff0000) r=0xff0000;
-
-      g>>=8;
-      if (g > 0xff00) g=0xff00;
-
-      b>>=16;
-      if (b > 0xff) b=0xff;
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-    }
+      g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH] = l_u32Val;
+		}
 #endif
 
     /* Octant 5 */
 #ifdef OCTANT5
-    for (xx2 = p_pu16Centrex - l_lIdx - 1; xx2 >= 0; xx2--) {
+		for (int16_t l_s16IndexX = (SCREEN_WIDTH>>1u) - l_u16Offset - 1; l_s16IndexX >= 0; l_s16IndexX--)
+    {
+      /* Get pixel from (XX, YY) */
+      uint32_t l_u32Val = (col * g_pau8Buffer[l_s16IndexX+l_s16IndexY*SCREEN_WIDTH])>>8;
 
-      if (xx2 < 0) xx = 0; else xx = xx2;
-      if (yy2 < 0) yy = 0; else yy = yy2;
+      // vy/vx
+      tol = ((l_s16IndexY - (YMAX>>1u))<<8)/(l_s16IndexX - (SCREEN_WIDTH>>1u));
 
-      /* Get pixel color from (XX,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy * WINDOW_WIDTH];
+      /* Get pixel from (XX + 1, YY + 1) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + 1 + (l_s16IndexY + 1)*SCREEN_WIDTH]) & 0xffffff00;
 
-      /* R,G and B separation */
-      r = col * ( l_ui32PixelColor >> 16);
-      g = col * ((l_ui32PixelColor >> 8) & 0xff);
-      b = col * ( l_ui32PixelColor       & 0xff);
+      //
+      tol = 256 - tol;
 
-      tol = ((yy - p_u16Centrey) << 16) / (xx - p_pu16Centrex);    //vy/vx
+      /* Get pixel from (XX + 1, YY) and add saturations */
+      l_u32Val += (tol * g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH + 1]) & 0xffffff00;
 
-      /* Get pixel color from (XX + 1,YY + 1) */
-      l_ui32PixelColor = p_paui32Source[xx + 1 + (yy + 1) * WINDOW_WIDTH];
-
-      r += (tol * ((((l_ui32PixelColor>>16) & 0xff) * iLevel) >> 8)) & 0xffff0000;
-      g += (tol * ((((l_ui32PixelColor>>8)  & 0xff) * iLevel) >> 8)) & 0xffff0000;
-      b += (tol * ((( l_ui32PixelColor      & 0xff) * iLevel) >> 8)) & 0xffff0000;
-
-      /* Get pixel color from (XX + 1,YY) */
-      l_ui32PixelColor = p_paui32Source[xx + yy*WINDOW_WIDTH + 1];
-
-      tol = 65536 - tol;
-      r += (tol * ((((l_ui32PixelColor>>16) & 0xff) * iLevel) >> 8)) & 0xffff0000;
-      g += (tol * ((((l_ui32PixelColor>>8)  & 0xff) * iLevel) >> 8)) & 0xffff0000;
-      b += (tol * ((( l_ui32PixelColor      & 0xff) * iLevel) >> 8)) & 0xffff0000;
-
-      /* Color clipping */
-      if (r > 0xff0000) r = 0xff0000;
-
-      g = g>>8;
-      if (g > 0xff00)   g = 0xff00;
-
-      b = b>>16;
-      if (b > 0xff)     b = 0xff;
+      /* Clipping */
+      l_u32Val = l_u32Val>>8;
+      if (l_u32Val > 255) l_u32Val = 255;
 
       /* Copy to (XX,YY) */
-      p_paui32Source[xx + yy * WINDOW_WIDTH] = r|g|b;
-    }
+      g_pau8Buffer[l_s16IndexX + l_s16IndexY*SCREEN_WIDTH] = l_u32Val;
+		}
 #endif
 
-    l_lIdx++;
+    l_u16Offset++;
+	}
+
+  /* Copy backbuffer to sdl texture. */
+  for (uint16_t l_u16PosY = 0; l_u16PosY < YMAX; l_u16PosY++)
+  {
+    for (uint16_t l_u16PosX = 0; l_u16PosX < SCREEN_WIDTH; l_u16PosX++)
+    {
+      unsigned char l_ui8Pixel = g_pau8Buffer[(l_u16PosY * SCREEN_WIDTH) + l_u16PosX];
+      g_pau32Buffer[(l_u16PosY * SCREEN_WIDTH) + l_u16PosX] = MAKE_RGB(l_ui8Pixel, l_ui8Pixel, l_ui8Pixel);
+    }
   }
 }
+
+
+/*==============================================================================
+Function    :   vMakeAndDisplayMini.
+Describe    :   Display 3 miniatures with scroll down.
+Parameters  :   None.
+Returns     :   None.
+==============================================================================*/
+static void vMakeAndDisplayMini (void)
+{
+  /* Locals variables declaration. */
+  static uint32_t l_u32ScrollYValue = 0;
+
+  /* Create miniature. */
+  for (uint16_t l_u16IndexY = 0u; l_u16IndexY < (YMAX>>2u); l_u16IndexY++)
+  {
+    for (uint16_t l_u16IndexX = 0u; l_u16IndexX < (SCREEN_WIDTH>>2u); l_u16IndexX++)
+    {
+      g_pau32Mini[(l_u16IndexY * (SCREEN_WIDTH>>2u) ) + l_u16IndexX] = g_pau32Buffer[ (  (l_u16IndexY * g_pSDL_Screen->format->BytesPerPixel) * SCREEN_WIDTH)
+                                                                    + (l_u16IndexX * g_pSDL_Screen->format->BytesPerPixel)];
+    }
+  }
+
+  /* Display miniatures. */
+  for (uint16_t l_u16IndexY = 0u; l_u16IndexY < (YMAX>>2u); l_u16IndexY++)
+  {
+    for (uint16_t l_u16IndexX = 0u; l_u16IndexX < (SCREEN_WIDTH>>2u); l_u16IndexX++)
+    {
+      /* Video inversion. */
+      uint32_t l_u32RGB     = g_pau32Mini[l_u16IndexY * (SCREEN_WIDTH>>2u) + l_u16IndexX];
+      uint8_t l_u8SrcRed    = UINT8_MAX_VALUE - GET_RED(l_u32RGB);
+      uint8_t l_u8SrcGreen  = UINT8_MAX_VALUE - GET_GREEN(l_u32RGB);
+      uint8_t l_u8SrcBlue   = UINT8_MAX_VALUE - GET_BLUE(l_u32RGB);
+
+      /* First miniature. */
+      uint16_t l_u16MiniPosY  = (l_u16IndexY + l_u32ScrollYValue)%YMAX;
+      l_u32RGB                = g_pau32Buffer[(l_u16MiniPosY*SCREEN_WIDTH)+(l_u16IndexX+8)];
+      uint8_t l_u8DstRed      = min(l_u8SrcRed    + 3 * GET_RED(l_u32RGB)   )>>2u;
+      uint8_t l_u8DstGreen    = min(l_u8SrcGreen  + 3 * GET_GREEN(l_u32RGB) )>>2u;
+      uint8_t l_u8DstBlue     = min(l_u8SrcBlue   + 3 * GET_BLUE(l_u32RGB)  )>>2u;
+      g_pau32Buffer[(l_u16MiniPosY*SCREEN_WIDTH)+(l_u16IndexX+8)] = MAKE_RGB(l_u8DstRed, l_u8DstGreen, l_u8DstBlue);
+
+      /* Second miniature. */
+      l_u16MiniPosY = (l_u16MiniPosY + (YMAX/3) ) % YMAX;
+      l_u32RGB      = g_pau32Buffer[(l_u16MiniPosY * SCREEN_WIDTH) + (l_u16IndexX + 8)];
+      l_u8DstRed    = min(l_u8SrcRed    + GET_RED(l_u32RGB)   )>>1u;
+      l_u8DstGreen  = min(l_u8SrcGreen  + GET_GREEN(l_u32RGB) )>>1u;
+      l_u8DstBlue   = min(l_u8SrcBlue   + GET_BLUE(l_u32RGB)  )>>1u;
+      g_pau32Buffer[(l_u16MiniPosY*SCREEN_WIDTH)+(l_u16IndexX+8)] = MAKE_RGB(l_u8DstRed, l_u8DstGreen, l_u8DstBlue);
+
+      /* Third miniature. */
+      l_u16MiniPosY = (l_u16MiniPosY + (YMAX/3) ) % YMAX;
+      l_u32RGB      = g_pau32Buffer[(l_u16MiniPosY * SCREEN_WIDTH) + (l_u16IndexX + 8)];
+      l_u8DstRed    = min(3 * l_u8SrcRed    + GET_RED(l_u32RGB)   )>>2u;
+      l_u8DstGreen  = min(3 * l_u8SrcGreen  + GET_GREEN(l_u32RGB) )>>2u;
+      l_u8DstBlue   = min(3 * l_u8SrcBlue   + GET_BLUE(l_u32RGB)  )>>2u;
+      g_pau32Buffer[(l_u16MiniPosY*SCREEN_WIDTH)+(l_u16IndexX+8)] = MAKE_RGB(l_u8DstRed, l_u8DstGreen, l_u8DstBlue);
+    }
+  }
+
+  /* Display upper and lower border. */
+  for (uint16_t l_u16IndexY = 0u; l_u16IndexY < (YMAX>>2u); l_u16IndexY++)
+  {
+    uint32_t l_u32RGB = MAKE_RGB(255,255,255);
+
+    uint32_t l_u16BorderPosY = (l_u16IndexY + l_u32ScrollYValue) % YMAX;
+    g_pau32Buffer[(l_u16BorderPosY * SCREEN_WIDTH) + 8] = l_u32RGB;
+    g_pau32Buffer[(l_u16BorderPosY * SCREEN_WIDTH) + 8 + (SCREEN_WIDTH>>2u)]=l_u32RGB;
+
+    l_u16BorderPosY = (l_u16BorderPosY + (YMAX/3))%YMAX;
+    g_pau32Buffer[(l_u16BorderPosY * SCREEN_WIDTH) + 8] = l_u32RGB;
+    g_pau32Buffer[(l_u16BorderPosY * SCREEN_WIDTH) + 8 + (SCREEN_WIDTH>>2u)]=l_u32RGB;
+
+    l_u16BorderPosY = (l_u16BorderPosY + (YMAX/3))%YMAX;
+    g_pau32Buffer[(l_u16BorderPosY * SCREEN_WIDTH) + 8] = l_u32RGB;
+    g_pau32Buffer[(l_u16BorderPosY * SCREEN_WIDTH) + 8 + (SCREEN_WIDTH>>2u)]=l_u32RGB;
+  }
+
+  /* Display left and right border. */
+  for (uint16_t l_u16IndexX=8;l_u16IndexX<(8 + (SCREEN_WIDTH>>2u));l_u16IndexX++)
+  {
+    uint32_t l_u32RGB         = MAKE_RGB(255,255,255);
+
+    uint32_t l_u16BorderPosY  = l_u32ScrollYValue%YMAX;
+    g_pau32Buffer[(l_u16BorderPosY * SCREEN_WIDTH) + l_u16IndexX] = l_u32RGB;
+    g_pau32Buffer[( ( (l_u16BorderPosY + (YMAX>>2u) )%YMAX) * SCREEN_WIDTH) + l_u16IndexX] = l_u32RGB;
+
+    l_u16BorderPosY = (l_u16BorderPosY + (YMAX/3) )%YMAX;
+    g_pau32Buffer[(l_u16BorderPosY*SCREEN_WIDTH)+l_u16IndexX] = l_u32RGB;
+    g_pau32Buffer[( ( (l_u16BorderPosY+(YMAX>>2u) )%YMAX) * SCREEN_WIDTH) + l_u16IndexX] = l_u32RGB;
+
+    l_u16BorderPosY = (l_u16BorderPosY + (YMAX/3) )%YMAX;
+    g_pau32Buffer[(l_u16BorderPosY*SCREEN_WIDTH) + l_u16IndexX] = l_u32RGB;
+    g_pau32Buffer[( ( (l_u16BorderPosY+(YMAX>>2u) )%YMAX) * SCREEN_WIDTH) + l_u16IndexX] = l_u32RGB;
+  }
+
+  l_u32ScrollYValue++;
+}
+/* -User specific- */
+
 
